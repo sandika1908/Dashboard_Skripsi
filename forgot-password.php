@@ -33,8 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail->isSMTP();
             $mail->Host       = 'smtp.gmail.com';
             $mail->SMTPAuth   = true;
-            $mail->Username   = 'archivesandika@gmail.com';     // ganti
-            $mail->Password   = 'egfi azhi uoef trid'; // ganti
+            $mail->Username   = '';     // ganti
+            $mail->Password   = ''; // ganti
             $mail->SMTPSecure = 'tls';
             $mail->Port       = 587;
 
