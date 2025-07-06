@@ -15,27 +15,39 @@
         echo '<script>alert("Access denied! You are not authorized to view this page."); window.location.href = "dashboard.php";</script>';
         exit;
     }
+    
 
     $id_access = '';
+    $email = '';
     $username = '';
     $password = '';
     $role = '';
     $result['role'] = '';
+    $id_rack = '';
 
-    if(isset($_GET['change'])){
-      $id_access = $_GET['change'];
-      
-      $query = "SELECT * FROM access WHERE id_access = '$id_access';";
-      $sql = mysqli_query($conn, $query);
+    if (isset($_GET['change'])) {
+    $id_access = $_GET['change'];
 
-      $result = mysqli_fetch_assoc($sql);
+    $query = "SELECT * FROM access WHERE id_access = '$id_access';";
+    $sql = mysqli_query($conn, $query);
 
-      $id_access = $result['id_access'];
-      $username = $result["username"];
-      $password = $result["password"];
-      $role = $result["role"];
+    $result = mysqli_fetch_assoc($sql);
 
+    $id_access = $result['id_access'];
+    $email = $result["email"];
+    $username = $result["username"];
+    $password = $result["password"];
+    $role = $result["role"];
+    $id_rack = $result["id_rack"];
     }
+
+    $racks = [];
+    $rackQuery = mysqli_query($conn, "SELECT id_rack, number, company FROM number_rack");
+    while ($row = mysqli_fetch_assoc($rackQuery)) {
+        $racks[] = $row;
+    }
+
+
 ?>
 
 <!DOCTYPE html>
@@ -168,6 +180,9 @@
             <li><a href="userlists.php">Users List</a></li>
         </ul>
     </li>
+    <li class="">
+        <a href="treshold.php"><img src="assets/img/icons/transfer1.svg" alt="img"><span> Threshold</span> </a>
+    </li>
     <?php endif; ?>
 
     <li>
@@ -207,6 +222,10 @@
 <!-- <label>Id_Access</label> -->
 <input type="hidden" name="id_access" value="<?php echo $id_access; ?>">
 <!-- </div> -->
+ <div class="form-group">
+<label>Email</label>
+<input type="text" name="email" value="<?php echo $email; ?>" required>
+</div>
 <div class="form-group">
 <label>User Name</label>
 <input type="text" name="username" value="<?php echo $username; ?>" oninput="this.value = this.value.replace(/[^a-zA-Z0-9#$%@]/g, '')" required>
@@ -229,7 +248,16 @@
 </div>
 </div>
 <div class="col-lg-3 col-sm-6 col-12">
-
+<div class="form-group">
+<label>Rack Server Number</label>
+<select name="id_rack" id="rack" class="select" required>
+<option value="">-- Choose Rack --</option>
+<?php foreach ($racks as $rack): ?>
+<option value="<?= $rack['id_rack']; ?>" <?= ($rack['id_rack'] == $id_rack) ? 'selected' : ''; ?>>
+<?= htmlspecialchars("Rack {$rack['number']} - {$rack['company']}"); ?></option>
+<?php endforeach; ?>
+</select>
+</div>
 </div>
 <div class="col-lg-12">
 

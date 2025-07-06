@@ -2,10 +2,9 @@
 
 session_start();
 
-// Cek login
 if (!isset($_SESSION["login"])) {
-    header("Location: index.php");
-    exit;
+header("Location: index.php");
+exit;
 }
 
 $username = isset($_SESSION["username"]) ? $_SESSION["username"] : "Guest";
@@ -13,44 +12,15 @@ $role = isset($_SESSION["role"]) ? $_SESSION["role"] : "User";
 
 include 'connect.php';
 
-$userQuery = "SELECT a.id_rack, nr.number, nr.company 
-              FROM access a
-              LEFT JOIN number_rack nr ON a.id_rack = nr.id_rack 
-              WHERE a.username = '$username' 
-              LIMIT 1";
-
-$userResult = mysqli_query($conn, $userQuery);
-$userData = mysqli_fetch_assoc($userResult);
-
-$id_rack = 9;
-$rackInfoQuery = "SELECT number, company FROM number_rack WHERE id_rack = '$id_rack'";
-$rackInfoResult = mysqli_query($conn, $rackInfoQuery);
-$rackInfo = mysqli_fetch_assoc($rackInfoResult);
-
-$rack_number = $rackInfo['number'] ?? 'Unknown';
-$rack_company = $rackInfo['company'] ?? 'Unknown';
-
-
-$query = "SELECT * FROM daily_monitoring WHERE id_rack = '$id_rack'";
-$sql = mysqli_query($conn, $query);
-$no = 0;
-
-if (isset($_POST['filter'])) {
-    $start_date = mysqli_real_escape_string($conn, $_POST['start_date']);
-    $end_date = mysqli_real_escape_string($conn, $_POST['end_date']);
-    
-    $sql = mysqli_query($conn, "
-        SELECT * FROM daily_monitoring 
-        WHERE id_rack = '$id_rack' 
-        AND created_daily BETWEEN '$start_date' AND '$end_date'
-    ");
-} else {
-    $sql = mysqli_query($conn, "SELECT * FROM daily_monitoring WHERE id_rack = '$id_rack'");
+if (!isset($_SESSION["login"]) || $_SESSION["role"] !== "Admin") {
+    echo '<script>alert("Access denied! You are not authorized to view this page."); window.location.href = "dashboard.php";</script>';
+    exit;
 }
 
-$query = "SELECT number_treshold FROM treshold WHERE id_rack = '$id_rack'"; // atau id lainnya
-$result = mysqli_query($conn, $query);
-$row = mysqli_fetch_assoc($result);
+$query = "SELECT * FROM number_rack;";
+$sql = mysqli_query($conn, $query);
+
+$no = 0;
 
 ?>
 
@@ -62,8 +32,8 @@ $row = mysqli_fetch_assoc($result);
 <meta name="description" content="POS - Bootstrap Admin Template">
 <meta name="keywords" content="admin, estimates, bootstrap, business, corporate, creative, management, minimal, modern,  html5, responsive">
 <meta name="author" content="Dreamguys - Bootstrap Admin Template">
-<meta name="robots" content="noindex, nofollow">
-<title>Dashboard - Interlink Data Center Sejahtera</title>
+<meta name="robots" content="nodashboard,phpollow">
+<title>Rack Server List - Interlink Data Center Sejahtera</title>
 
 <link rel="shortcut icon" type="image/x-icon" href="assets/img/idcs.png">
 
@@ -71,23 +41,12 @@ $row = mysqli_fetch_assoc($result);
 
 <link rel="stylesheet" href="assets/css/animate.css">
 
-<link rel="stylesheet" href="assets/plugins/select2/css/select2.min.css">
-
-<link rel="stylesheet" href="assets/css/bootstrap-datetimepicker.min.css">
-
 <link rel="stylesheet" href="assets/css/dataTables.bootstrap4.min.css">
 
 <link rel="stylesheet" href="assets/plugins/fontawesome/css/fontawesome.min.css">
 <link rel="stylesheet" href="assets/plugins/fontawesome/css/all.min.css">
 
 <link rel="stylesheet" href="assets/css/style.css">
-
-<style>
-    tr.table-danger td {
-        background-color: #f8d7da !important;
-    }
-</style>
-
 </head>
 <body>
 <div id="global-loader">
@@ -120,6 +79,9 @@ $row = mysqli_fetch_assoc($result);
 <ul class="nav user-menu">
 
 <li class="nav-item dropdown">
+<!-- <a href="javascript:void(0);" class="dropdown-toggle nav-link" data-bs-toggle="dropdown">
+<img src="assets/img/icons/notification-bing.svg" alt="img"> <span class="badge rounded-pill">4</span>
+</a> -->
 <div class="dropdown-menu notifications">
 <div class="topnav-dropdown-header">
 <span class="notification-title">Notifications</span>
@@ -184,13 +146,13 @@ $row = mysqli_fetch_assoc($result);
 <ul>
     <?php if ($role === 'Admin'): ?>
     <li class="submenu">
-        <a href="javascript:void(0);"><img src="assets/img/icons/users1.svg" alt="img"><span> Users</span> <span class="menu-arrow"></span></a>
+        <a class="" href="javascript:void(0);"><img src="assets/img/icons/users1.svg" alt="img"><span> Users</span> <span class="menu-arrow"></span></a>
         <ul>
             <li><a href="newuser.php">New User </a></li>
             <li><a href="userlists.php">Users List</a></li>
         </ul>
     </li>
-    <li class="">
+    <li class="active">
         <a href="rack.php"><img src="assets/img/icons/purchase1.svg" alt="img"><span> List Rack Server</span> </a>
     </li>
     <li class="">
@@ -198,7 +160,7 @@ $row = mysqli_fetch_assoc($result);
     </li>
     <?php endif; ?>
 
-    <li class="active">
+    <li>
         <a href="dashboard.php"><img src="assets/img/icons/dashboard.svg" alt="img"><span> Dashboard</span> </a>
     </li>
     <!-- <li>
@@ -220,94 +182,60 @@ $row = mysqli_fetch_assoc($result);
 <div class="content">
 <div class="page-header">
 <div class="page-title">
-<h2>Daily Monitoring Rack Server <?php echo htmlspecialchars($rack_number); ?> - <?php echo htmlspecialchars($rack_company); ?></h2>
+<h4>Rack Server List</h4>
+<h6>Manage your Rack Server</h6>
 </div>
-
+<div class="page-btn">
+<a href="newrack.php" class="btn btn-added"><img src="assets/img/icons/plus.svg" alt="img">Add Rack</a>
+</div>
 </div>
 
 <div class="card">
 <div class="card-body">
 <div class="table-top">
-<div class="search-set">
-<div class="search-path">
-<a class="btn btn-filter" id="filter_search">
-<img src="assets/img/icons/filter.svg" alt="img">
-<span><img src="assets/img/icons/closes.svg" alt="img"></span>
-</a>
-</div>
-<div class="search-input">
-<a class="btn btn-searchset"><img src="assets/img/icons/search-white.svg" alt="img"></a>
-</div>
-</div>
-
-    <!-- Export Buttons to CSV & PDF -->
-    <div class="ms-auto d-flex gap-2">
-        <a href="export_daily.php" class="btn btn-sm btn-success">
-            <i class="fas fa-file-csv me-1"></i> CSV
-        </a>
-        <button onclick="exportToPDF()" class="btn btn-sm btn-danger">
-            <i class="fas fa-file-pdf me-1"></i> PDF
-        </button>
-    </div>
-    
-
-<div class="wordset">
-
-</div>
-</div>
-
-<div class="card" id="filter_inputs">
-<div class="card-body pb-0">
-<form method="post" action="">
-<div class="row g-3 align-items-center">
-    <div class="col-lg-3 col-md-6">
-        <div class="form-group">
-            <label for="start_date" class="form-label">Start Date</label>
-            <input type="datetime-local" class="form-control" id="start_date" name="start_date" required>
+    <!-- <form action="" method="get">
+        <input type="text" name="filter" class="d-none">
+        <div>
+            <p>Start date</p>
+            <input type="date" name="start_date">
         </div>
-    </div>
-    <div class="col-lg-3 col-md-6">
-        <div class="form-group">
-            <label for="end_date" class="form-label">End Date</label>
-            <input type="datetime-local" class="form-control" id="end_date" name="end_date" required>
+        <div>
+            <p>End date</p>
+            <input type="date" name="end_date">
         </div>
-    </div>
-    <div class="col-lg-2 col-md-6">
-        <div class="d-grid">
-            <button type="submit" name="filter" class="btn btn-primary">
-                <img src="assets/img/icons/search-whites.svg" alt="Search" width="20" class="me-2"> Search
-            </button>
-        </div>
-    </div>
-
-</div>
-</form>
-</div>
+    </form> -->
 </div>
 
 <div class="table-responsive">
 <table class="table  datanew">
 <thead>
 <tr>
-<th>No </th>
-<th>Current (A)</th>
- <th>Power (W)</th>
-<th>Time</th>
+<th>No</th>
+<th>Number Rack</th>
+<th>Company</th>
+<th>Description</th>
+<th>Created On</th>
+<th>Action</th>
 </tr>
 </thead>
 <tbody>
 <?php
-$threshold = isset($row['number_treshold']) ? floatval($row['number_treshold']) : 5.5;
 while($result = mysqli_fetch_assoc($sql)){
-    $no++;
-    $current = floatval($result['current']);
-    $rowClass = ($current > $threshold) ? 'table-danger' : '';
 ?>
-<tr class="<?php echo $rowClass; ?>">
-    <td style="text-align: center;"><?php echo +$no; ?></td>
-    <td><?php echo $result['current']; ?></td>
-    <td><?php echo $result['power']; ?></td>
-    <td><?php echo $result['created_daily']; ?></td>
+<tr>
+<td style="text-align: center;"><?php echo ++$no; ?></td>
+<td><?php echo $result['number']; ?></td>
+<td><?php echo $result['company']; ?></td>
+<td><?php echo $result['description']; ?></td>
+<td><?php echo $result['created']; ?></td>
+<td>
+<a class="me-3" href="newrack.php?change_rack=<?php echo $result['id_rack']; ?>">
+<img src="assets/img/icons/edit.svg" alt="img">
+</a>
+<a class="me-3" href="process.php?delete=<?php echo $result['id_rack']; ?>" onclick="return confirm('Are you sure for delete Rack <?php echo addslashes($result['number']); ?> <?php echo addslashes($result['company']); ?> ?');">
+<img src="assets/img/icons/delete.svg" alt="img">
+</a>
+</td>
 </tr>
 <?php
 }
@@ -317,10 +245,10 @@ while($result = mysqli_fetch_assoc($sql)){
 </div>
 </div>
 </div>
+</div>
+</div>
 
-</div>
-</div>
-</div>
+
 
 <script data-cfasync="false" src="../../cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="assets/js/jquery-3.6.0.min.js"></script>
 
@@ -342,39 +270,5 @@ while($result = mysqli_fetch_assoc($sql)){
 <script src="assets/plugins/sweetalert/sweetalerts.min.js"></script>
 
 <script src="assets/js/script.js"></script>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
-
-<script>
-    async function exportToPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.setFontSize(18);
-        doc.text('Report Monitoring Data', 14, 15);
-
-        const headers = [["No", "Current (A)", "Power (W)", "Time"]];
-        const rows = [];
-
-        const table = document.querySelector("table tbody");
-        const trs = table.querySelectorAll("tr");
-
-        trs.forEach((tr) => {
-            const cols = tr.querySelectorAll("td");
-            const row = [];
-            cols.forEach((td) => row.push(td.textContent.trim()));
-            rows.push(row);
-        });
-
-        doc.autoTable({
-            startY: 25,
-            head: headers,
-            body: rows
-        });
-
-        doc.save("Daily_Monitoring.pdf");
-    }
-</script>
-
 </body>
 </html>

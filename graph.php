@@ -12,17 +12,27 @@ $role = isset($_SESSION["role"]) ? $_SESSION["role"] : "User";
 
 include 'connect.php';
 
-$query = "SELECT * FROM daily_monitoring;";
+$userQuery = "SELECT a.id_rack, nr.number, nr.company 
+              FROM access a
+              LEFT JOIN number_rack nr ON a.id_rack = nr.id_rack 
+              WHERE a.username = '$username' 
+              LIMIT 1";
+
+$userResult = mysqli_query($conn, $userQuery);
+$userData = mysqli_fetch_assoc($userResult);
+
+$id_rack = 9;
+$rackInfoQuery = "SELECT number, company FROM number_rack WHERE id_rack = '$id_rack'";
+$rackInfoResult = mysqli_query($conn, $rackInfoQuery);
+$rackInfo = mysqli_fetch_assoc($rackInfoResult);
+
+$rack_number = $rackInfo['number'] ?? 'Unknown';
+$rack_company = $rackInfo['company'] ?? 'Unknown';
+
+
+$query = "SELECT * FROM daily_monitoring WHERE id_rack = '$id_rack'";
 $sql = mysqli_query($conn, $query);
 $no = 0;
-
-if (isset($_POST['filter'])) {
-    $start_date = mysqli_real_escape_string($conn, $_POST['start_date']);
-    $end_date = mysqli_real_escape_string($conn, $_POST['end_date']);
-    $sql = mysqli_query($conn, "SELECT * FROM daily_monitoring WHERE (created_daily BETWEEN '$start_date' AND '$end_date')");
-  } else {
-    $data_tgl = mysqli_query($conn, "SELECT * FROM daily_monitoring");
-  }
 
 ?>
 
@@ -150,14 +160,19 @@ if (isset($_POST['filter'])) {
             <li><a href="userlists.php">Users List</a></li>
         </ul>
     </li>
+    <li class="">
+        <a href="rack.php"><img src="assets/img/icons/purchase1.svg" alt="img"><span> List Rack Server</span> </a>
+    </li>
+    <li class="">
+        <a href="treshold.php"><img src="assets/img/icons/transfer1.svg" alt="img"><span> Threshold</span> </a>
+    </li>
     <?php endif; ?>
-
     <li>
         <a href="dashboard.php"><img src="assets/img/icons/dashboard.svg" alt="img"><span> Dashboard</span> </a>
     </li>
-    <li>
+    <!-- <li>
         <a href="log.php"><img src="assets/img/icons/eye.svg" alt="img"><span> Log</span> </a>
-    </li>
+    </li> -->
     <li class="active">
         <a href="graph.php"><i data-feather="bar-chart-2"></i><span> Graph</span> </a>
     </li>
@@ -174,7 +189,7 @@ if (isset($_POST['filter'])) {
 <div class="content">
 <div class="page-header">
 <div class="page-title">
-<h2>Graph</h2>
+<h2>Daily Monitoring Rack Server <?php echo htmlspecialchars($rack_number); ?> - <?php echo htmlspecialchars($rack_company); ?></h2>
 </div>
 
 </div>
@@ -227,8 +242,8 @@ if (isset($_POST['filter'])) {
 </div>
 
         <div class="container" style="text-align: center;">
-        <h3>Graph</h3>
-        <p>(Show 6 Last Data)</p>
+        <!-- <h3>Graph</h3>
+        <p>(Show 6 Last Data)</p> -->
         </div>
 
         <div class="container">

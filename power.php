@@ -2,13 +2,28 @@
 
     include 'connect.php';
 
-    $sql_ID = mysqli_query($conn, "SELECT MAX(ID) FROM daily_monitoring");
-    $data_ID = mysqli_fetch_array($sql_ID);
-    $ID_akhir = $data_ID['MAX(ID)'];
-    $ID_awal = $ID_akhir - 5 ;
+    $id_rack = 9;
 
-    $created_daily = mysqli_query($conn, "SELECT created_daily FROM daily_monitoring WHERE ID>='$ID_awal' and ID<='$ID_akhir' ORDER BY id ASC");
-    $power = mysqli_query($conn, "SELECT power FROM daily_monitoring WHERE ID>='$ID_awal' and ID<='$ID_akhir' ORDER BY id ASC");
+    // Ambil ID terakhir khusus untuk rack 9
+    $sql_ID = mysqli_query($conn, "SELECT MAX(ID) AS max_id FROM daily_monitoring WHERE id_rack = '$id_rack'");
+    $data_ID = mysqli_fetch_array($sql_ID);
+    $ID_akhir = $data_ID['max_id'];
+    $ID_awal = $ID_akhir - 5;
+
+    // Ambil 5 data terakhir berdasarkan ID dan id_rack = 9
+    $created_daily = mysqli_query($conn, "
+        SELECT created_daily FROM daily_monitoring 
+        WHERE id_rack = '$id_rack' 
+        AND ID BETWEEN '$ID_awal' AND '$ID_akhir' 
+        ORDER BY ID ASC
+    ");
+
+    $power = mysqli_query($conn, "
+        SELECT power FROM daily_monitoring 
+        WHERE id_rack = '$id_rack' 
+        AND ID BETWEEN '$ID_awal' AND '$ID_akhir' 
+        ORDER BY ID ASC
+    ");
 
 ?>
 
@@ -16,8 +31,13 @@
     <!-- <div class="panel-heading">
         Gafik power
     </div> -->
+    
 
-    <div class="panel-body">
+    <div class="panel-body" style="display: flex; align-items: center;">
+
+    <div style="writing-mode: vertical-rl; transform: rotate(180deg); color: #015078; font-weight: normal; font-style: italic; font-size: 30px; margin-right: 10px;">
+                    Watt
+    </div>
         <canvas id="myChart_power"></canvas>
 
         <script type="text/javascript">
@@ -32,10 +52,10 @@
                     ?>
                 ],
                 datasets: [{
-                    label: "power",
+                    label: "Power (Watt)",
                     fill: true,
-                    backgroundColor: "rgba(245, 23, 2, 0.5)",
-                    borderColor: "rgba(245, 23, 2, 1)",
+                    backgroundColor: "rgba(1, 80, 120, 0.5)",
+                    borderColor: "rgba(1, 80, 120, 1)",
                     lineTension: 0.5,
                     pointRadius: 5, 
                     data: [

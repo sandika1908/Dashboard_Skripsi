@@ -22,6 +22,14 @@ $sql = mysqli_query($conn, $query);
 
 $no = 0;
 
+$sql = mysqli_query($conn, "
+  SELECT a.*, nr.number, nr.company
+  FROM access a
+  LEFT JOIN number_rack nr ON a.id_rack = nr.id_rack
+");
+
+
+
 ?>
 
 <!DOCTYPE html>
@@ -152,14 +160,20 @@ $no = 0;
             <li><a href="userlists.php">Users List</a></li>
         </ul>
     </li>
+    <li class="">
+        <a href="rack.php"><img src="assets/img/icons/purchase1.svg" alt="img"><span> List Rack Server</span> </a>
+    </li>
+    <li class="">
+        <a href="treshold.php"><img src="assets/img/icons/transfer1.svg" alt="img"><span> Threshold</span> </a>
+    </li>
     <?php endif; ?>
 
     <li>
         <a href="dashboard.php"><img src="assets/img/icons/dashboard.svg" alt="img"><span> Dashboard</span> </a>
     </li>
-    <li>
+    <!-- <li>
         <a href="log.php"><img src="assets/img/icons/eye.svg" alt="img"><span> Log</span> </a>
-    </li>
+    </li> -->
     <li>
         <a href="graph.php"><i data-feather="bar-chart-2"></i><span> Graph</span> </a>
     </li>
@@ -205,10 +219,11 @@ $no = 0;
 <thead>
 <tr>
 <th> No</th>
+<th>Email </th>
 <th>Username </th>
 <th>Password</th>
 <th>Role</th>
-<th>Created On</th>
+<th>Number Rack - Company</th>
 <th>Action</th>
 </tr>
 </thead>
@@ -218,10 +233,11 @@ while($result = mysqli_fetch_assoc($sql)){
 ?>
 <tr>
 <td style="text-align: center;"><?php echo ++$no; ?></td>
+<td><?php echo $result['email']; ?></td>
 <td><?php echo $result['username']; ?></td>
 <td><?php echo $result['password']; ?></td>
 <td><?php echo $result['role']; ?></td>
-<td><?php echo $result['created_access']; ?></td>
+<td><?php echo $result['number'] . ' - ' . $result['company']; ?></td>
 <td>
 <a class="me-3" href="newuser.php?change=<?php echo $result['id_access']; ?>">
 <img src="assets/img/icons/edit.svg" alt="img">

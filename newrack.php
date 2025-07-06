@@ -1,29 +1,39 @@
 <?php
+    session_start();
 
-session_start();
+    if (!isset($_SESSION["login"])) {
+    header("Location: index.php");
+    exit;
+    }
 
-if (!isset($_SESSION["login"])) {
-  header("Location: index.php");
-  exit;
-}
+    $username = isset($_SESSION["username"]) ? $_SESSION["username"] : "Guest";
+    $role = isset($_SESSION["role"]) ? $_SESSION["role"] : "User";
 
-$username = isset($_SESSION["username"]) ? $_SESSION["username"] : "Guest";
-$role = isset($_SESSION["role"]) ? $_SESSION["role"] : "User";
+    include 'connect.php';
 
-include 'connect.php';
+    if (!isset($_SESSION["login"]) || $_SESSION["role"] !== "Admin") {
+        echo '<script>alert("Access denied! You are not authorized to view this page."); window.location.href = "dashboard.php";</script>';
+        exit;
+    }
 
-$query = "SELECT * FROM log_monitoring;";
-$sql = mysqli_query($conn, $query);
-$no = 0;
+    $id_rack = '';
+    $number = '';
+    $company = '';
+    $description = '';
 
-if (isset($_POST['filter'])) {
-    $start_date = mysqli_real_escape_string($conn, $_POST['start_date']);
-    $end_date = mysqli_real_escape_string($conn, $_POST['end_date']);
-    $sql = mysqli_query($conn, "SELECT * FROM daily_monitoring WHERE (created_daily BETWEEN '$start_date' AND '$end_date')");
-  } else {
-    $data_tgl = mysqli_query($conn, "SELECT * FROM daily_monitoring");
-  }
+    if(isset($_GET['change_rack'])){
+      $id_rack = $_GET['change_rack'];
+      
+      $query = "SELECT * FROM number_rack WHERE id_rack = '$id_rack';";
+      $sql = mysqli_query($conn, $query);
 
+      $result = mysqli_fetch_assoc($sql);
+
+      $id_rack = $result['id_rack'];
+      $number = $result["number"];
+      $company = $result["company"];
+      $description = $result["description"];
+    }
 ?>
 
 <!DOCTYPE html>
@@ -35,7 +45,7 @@ if (isset($_POST['filter'])) {
 <meta name="keywords" content="admin, estimates, bootstrap, business, corporate, creative, management, minimal, modern,  html5, responsive">
 <meta name="author" content="Dreamguys - Bootstrap Admin Template">
 <meta name="robots" content="noindex, nofollow">
-<title>Log - Interlink Data Center Sejahtera</title>
+<title>Add/Update Rack Server - Interlink Data Center Sejahtera</title>
 
 <link rel="shortcut icon" type="image/x-icon" href="assets/img/idcs.png">
 
@@ -44,8 +54,6 @@ if (isset($_POST['filter'])) {
 <link rel="stylesheet" href="assets/css/animate.css">
 
 <link rel="stylesheet" href="assets/plugins/select2/css/select2.min.css">
-
-<link rel="stylesheet" href="assets/css/bootstrap-datetimepicker.min.css">
 
 <link rel="stylesheet" href="assets/css/dataTables.bootstrap4.min.css">
 
@@ -85,6 +93,9 @@ if (isset($_POST['filter'])) {
 <ul class="nav user-menu">
 
 <li class="nav-item dropdown">
+<!-- <a href="javascript:void(0);" class="dropdown-toggle nav-link" data-bs-toggle="dropdown">
+<img src="assets/img/icons/notification-bing.svg" alt="img"> <span class="badge rounded-pill">4</span>
+</a> -->
 <div class="dropdown-menu notifications">
 <div class="topnav-dropdown-header">
 <span class="notification-title">Notifications</span>
@@ -146,27 +157,25 @@ if (isset($_POST['filter'])) {
 <div class="sidebar" id="sidebar">
 <div class="sidebar-inner slimscroll">
 <div id="sidebar-menu" class="sidebar-menu">
-
 <ul>
     <?php if ($role === 'Admin'): ?>
     <li class="submenu">
-        <a href="javascript:void(0);"><img src="assets/img/icons/users1.svg" alt="img"><span> Users</span> <span class="menu-arrow"></span></a>
+        <a class="active" href="javascript:void(0);"><img src="assets/img/icons/users1.svg" alt="img"><span> Users</span> <span class="menu-arrow"></span></a>
         <ul>
             <li><a href="newuser.php">New User </a></li>
             <li><a href="userlists.php">Users List</a></li>
         </ul>
     </li>
-
     <li class="">
-        <a href="treshold.php"><img src="assets/img/icons/transfer1.svg" alt="img"><span> Treshold</span> </a>
+        <a href="rack.php"><img src="assets/img/icons/purchase1.svg" alt="img"><span> List Rack</span> </a>
+    </li>
+    <li class="">
+        <a href="treshold.php"><img src="assets/img/icons/transfer1.svg" alt="img"><span> Threshold</span> </a>
     </li>
     <?php endif; ?>
 
     <li>
         <a href="dashboard.php"><img src="assets/img/icons/dashboard.svg" alt="img"><span> Dashboard</span> </a>
-    </li>
-    <li class="active">
-        <a href="log.php"><img src="assets/img/icons/eye.svg" alt="img"><span> Log</span> </a>
     </li>
     <li>
         <a href="graph.php"><i data-feather="bar-chart-2"></i><span> Graph</span> </a>
@@ -175,7 +184,7 @@ if (isset($_POST['filter'])) {
         <a href="logout.php"><i data-feather="log-out"></i><span> Logout</span> </a>
     </li>
 </ul>
-
+    
 </div>
 </div>
 </div>
@@ -184,103 +193,72 @@ if (isset($_POST['filter'])) {
 <div class="content">
 <div class="page-header">
 <div class="page-title">
-<h2>Log Monitoring Rack Server 76</h2>
+<h4>Rack Server List Management</h4>
+<h6>Add/Update Rack Server</h6>
 </div>
-
 </div>
 
 <div class="card">
 <div class="card-body">
-<div class="table-top">
-<div class="search-set">
-<div class="search-path">
-<a class="btn btn-filter" id="filter_search">
-<img src="assets/img/icons/filter.svg" alt="img">
-<span><img src="assets/img/icons/closes.svg" alt="img"></span>
-</a>
-</div>
-<div class="search-input">
-<a class="btn btn-searchset"><img src="assets/img/icons/search-white.svg" alt="img"></a>
-</div>
-</div>
+<div class="row">
+<div class="col-lg-3 col-sm-6 col-12">
 
-    <!-- Export Buttons to CSV & PDF -->
-    <div class="ms-auto d-flex gap-2">
-        <a href="export_log.php" class="btn btn-sm btn-success">
-            <i class="fas fa-file-csv me-1"></i> CSV
-        </a>
-        <button onclick="exportToPDF()" class="btn btn-sm btn-danger">
-            <i class="fas fa-file-pdf me-1"></i> PDF
-        </button>
-    </div>
-
-<div class="wordset">
-
+<form method="post" action="process.php">
+<!-- <div class="form-group"> -->
+<!-- <label>id_rack</label> -->
+<input type="hidden" name="id_rack" value="<?php echo $id_rack; ?>">
+<!-- </div> -->
+ <div class="form-group">
+<label>Number Rack Server</label>
+<input type="text" name="number" value="<?php echo $number; ?>" oninput="this.value = this.value.replace(/[^a-zA-Z0-9#$%@]/g, '')" required>
+</div>
+<div class="form-group">
+<label>Company</label>
+<input type="text" name="company" value="<?php echo $company; ?>"  required>
+</div>
+<div class="form-group">
+<label>Description</label>
+<div class="pass-group">
+<input type="text" class=" pass-input" name="description" value="<?php echo $description; ?>" required>
 </div>
 </div>
+</div>
+<div class="col-lg-3 col-sm-6 col-12">
+</div>
+<div class="col-lg-3 col-sm-6 col-12">
 
-<div class="card" id="filter_inputs">
-<div class="card-body pb-0">
-<form method="post" action="">
-<div class="row g-3 align-items-center">
-    <div class="col-lg-3 col-md-6">
-        <div class="form-group">
-            <label for="start_date" class="form-label">Start Date</label>
-            <input type="datetime-local" class="form-control" id="start_date" name="start_date">
-        </div>
-    </div>
-    <div class="col-lg-3 col-md-6">
-        <div class="form-group">
-            <label for="end_date" class="form-label">End Date</label>
-            <input type="datetime-local" class="form-control" id="end_date" name="end_date">
-        </div>
-    </div>
-    <div class="col-lg-2 col-md-6">
-        <div class="d-grid">
-            <button type="submit" name="filter" class="btn btn-primary">
-                <img src="assets/img/icons/search-whites.svg" alt="Search" width="20" class="me-2"> Search
-            </button>
-        </div>
-    </div>
+</div>
+<div class="col-lg-12">
+
+<?php
+                if(isset($_GET['change_rack'])){
+            ?>
+        
+                 <button type="submit" name="execute_rack" value="edit" class="btn btn-submit me-2"><i class="bi bi-send-fill"></i> Save</button>
+            <?php
+                } else {
+            ?>
+            
+                <button type="submit" name="execute_rack" value="add" class="btn btn-submit me-2"><i class="bi bi-send-fill"></i> Add</button>
+            
+                <?php
+                }
+            ?>
+
+            <a href="rack.php"><button class="btn btn-cancel" type="button"><i class="bi bi-backspace-fill"></i> Cancel</button></a>
+            
+</div>
+</div>
+</div>
 </div>
 </form>
-</div>
-</div>
-
-<div class="table-responsive">
-<table class="table  datanew">
-<thead>
-<tr>
-<th>No </th>
-<th>Current (A)</th>
- <th>Power (W)</th>
-<th>Time</th>
-</tr>
-</thead>
-<tbody>
-<?php
-while($result = mysqli_fetch_assoc($sql)){
-?>
-<tr>
-<td style="text-align: center;"><?php echo ++$no; ?></td>
-<td><?php echo $result['current']; ?></td>
-<td><?php echo $result['power']; ?></td>
-<td><?php echo $result['created_log']; ?></td>
-</tr>
-<?php
-}
-?>
-</tbody>
-</table>
-</div>
-</div>
-</div>
 
 </div>
 </div>
 </div>
 
-<script data-cfasync="false" src="../../cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="assets/js/jquery-3.6.0.min.js"></script>
+
+<script src="assets/js/jquery-3.6.0.min.js"></script>
 
 <script src="assets/js/feather.min.js"></script>
 
@@ -293,46 +271,9 @@ while($result = mysqli_fetch_assoc($sql)){
 
 <script src="assets/plugins/select2/js/select2.min.js"></script>
 
-<script src="assets/js/moment.min.js"></script>
-<script src="assets/js/bootstrap-datetimepicker.min.js"></script>
-
 <script src="assets/plugins/sweetalert/sweetalert2.all.min.js"></script>
 <script src="assets/plugins/sweetalert/sweetalerts.min.js"></script>
 
 <script src="assets/js/script.js"></script>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
-
-<script>
-    async function exportToPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.setFontSize(18);
-        doc.text('Daily Monitoring Data', 14, 15);
-
-        const headers = [["No", "Current (A)", "Power (W)", "Time"]];
-        const rows = [];
-
-        const table = document.querySelector("table tbody");
-        const trs = table.querySelectorAll("tr");
-
-        trs.forEach((tr) => {
-            const cols = tr.querySelectorAll("td");
-            const row = [];
-            cols.forEach((td) => row.push(td.textContent.trim()));
-            rows.push(row);
-        });
-
-        doc.autoTable({
-            startY: 25,
-            head: headers,
-            body: rows
-        });
-
-        doc.save("Log_Report.pdf");
-    }
-</script>
-
 </body>
 </html>

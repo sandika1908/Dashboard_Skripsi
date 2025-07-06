@@ -2,10 +2,9 @@
 
 session_start();
 
-// Cek login
 if (!isset($_SESSION["login"])) {
-    header("Location: index.php");
-    exit;
+  header("Location: index.php");
+  exit;
 }
 
 $username = isset($_SESSION["username"]) ? $_SESSION["username"] : "Guest";
@@ -13,44 +12,38 @@ $role = isset($_SESSION["role"]) ? $_SESSION["role"] : "User";
 
 include 'connect.php';
 
-$userQuery = "SELECT a.id_rack, nr.number, nr.company 
-              FROM access a
-              LEFT JOIN number_rack nr ON a.id_rack = nr.id_rack 
-              WHERE a.username = '$username' 
-              LIMIT 1";
+if (isset($_POST['update_treshold'])) {
+    $number = floatval($_POST['number']);
+    $edited = date("Y-m-d H:i:s");
 
-$userResult = mysqli_query($conn, $userQuery);
-$userData = mysqli_fetch_assoc($userResult);
+    $id_rack = intval($_POST['id_rack']); // ambil dari form
+    $sql = "INSERT INTO treshold (id_rack, number_treshold, edited) VALUES (?, ?, ?) 
+        ON DUPLICATE KEY UPDATE number_treshold = VALUES(number_treshold), edited = VALUES(edited)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ids", $id_rack, $number, $edited);
 
-$id_rack = 9;
-$rackInfoQuery = "SELECT number, company FROM number_rack WHERE id_rack = '$id_rack'";
-$rackInfoResult = mysqli_query($conn, $rackInfoQuery);
-$rackInfo = mysqli_fetch_assoc($rackInfoResult);
+    if ($stmt->execute()) {
+        echo "<script>alert('Threshold changed successfully!');</script>";
+    } else {
+        echo "<script>alert('Failed to change threshold!');</script>";
+    }
 
-$rack_number = $rackInfo['number'] ?? 'Unknown';
-$rack_company = $rackInfo['company'] ?? 'Unknown';
-
-
-$query = "SELECT * FROM daily_monitoring WHERE id_rack = '$id_rack'";
-$sql = mysqli_query($conn, $query);
-$no = 0;
-
-if (isset($_POST['filter'])) {
-    $start_date = mysqli_real_escape_string($conn, $_POST['start_date']);
-    $end_date = mysqli_real_escape_string($conn, $_POST['end_date']);
-    
-    $sql = mysqli_query($conn, "
-        SELECT * FROM daily_monitoring 
-        WHERE id_rack = '$id_rack' 
-        AND created_daily BETWEEN '$start_date' AND '$end_date'
-    ");
-} else {
-    $sql = mysqli_query($conn, "SELECT * FROM daily_monitoring WHERE id_rack = '$id_rack'");
+    $stmt->close();
 }
 
-$query = "SELECT number_treshold FROM treshold WHERE id_rack = '$id_rack'"; // atau id lainnya
+$id_rack = isset($_POST['id_rack']) ? intval($_POST['id_rack']) : 1;
+$query = "SELECT number_treshold FROM treshold WHERE id_rack = $id_rack";
 $result = mysqli_query($conn, $query);
 $row = mysqli_fetch_assoc($result);
+
+$threshold = isset($row['number_treshold']) ? floatval($row['number_treshold']) : 5.5;
+
+$racks = [];
+$rackQuery = mysqli_query($conn, "SELECT id_rack, number, company FROM number_rack");
+while ($row = mysqli_fetch_assoc($rackQuery)) {
+$racks[] = $row;
+
+}
 
 ?>
 
@@ -63,7 +56,7 @@ $row = mysqli_fetch_assoc($result);
 <meta name="keywords" content="admin, estimates, bootstrap, business, corporate, creative, management, minimal, modern,  html5, responsive">
 <meta name="author" content="Dreamguys - Bootstrap Admin Template">
 <meta name="robots" content="noindex, nofollow">
-<title>Dashboard - Interlink Data Center Sejahtera</title>
+<title>Treshold - Interlink Data Center Sejahtera</title>
 
 <link rel="shortcut icon" type="image/x-icon" href="assets/img/idcs.png">
 
@@ -193,12 +186,12 @@ $row = mysqli_fetch_assoc($result);
     <li class="">
         <a href="rack.php"><img src="assets/img/icons/purchase1.svg" alt="img"><span> List Rack Server</span> </a>
     </li>
-    <li class="">
+    <li class="active">
         <a href="treshold.php"><img src="assets/img/icons/transfer1.svg" alt="img"><span> Threshold</span> </a>
     </li>
     <?php endif; ?>
 
-    <li class="active">
+    <li class="">
         <a href="dashboard.php"><img src="assets/img/icons/dashboard.svg" alt="img"><span> Dashboard</span> </a>
     </li>
     <!-- <li>
@@ -220,103 +213,42 @@ $row = mysqli_fetch_assoc($result);
 <div class="content">
 <div class="page-header">
 <div class="page-title">
-<h2>Daily Monitoring Rack Server <?php echo htmlspecialchars($rack_number); ?> - <?php echo htmlspecialchars($rack_company); ?></h2>
+<h4>Threshold Management</h4>
+<h6>Update Threshold</h6>
 </div>
-
 </div>
 
 <div class="card">
 <div class="card-body">
-<div class="table-top">
-<div class="search-set">
-<div class="search-path">
-<a class="btn btn-filter" id="filter_search">
-<img src="assets/img/icons/filter.svg" alt="img">
-<span><img src="assets/img/icons/closes.svg" alt="img"></span>
-</a>
-</div>
-<div class="search-input">
-<a class="btn btn-searchset"><img src="assets/img/icons/search-white.svg" alt="img"></a>
-</div>
-</div>
+<div class="row">
+<div class="col-lg-3 col-sm-6 col-12">
 
-    <!-- Export Buttons to CSV & PDF -->
-    <div class="ms-auto d-flex gap-2">
-        <a href="export_daily.php" class="btn btn-sm btn-success">
-            <i class="fas fa-file-csv me-1"></i> CSV
-        </a>
-        <button onclick="exportToPDF()" class="btn btn-sm btn-danger">
-            <i class="fas fa-file-pdf me-1"></i> PDF
-        </button>
-    </div>
-    
-
-<div class="wordset">
-
-</div>
-</div>
-
-<div class="card" id="filter_inputs">
-<div class="card-body pb-0">
 <form method="post" action="">
-<div class="row g-3 align-items-center">
-    <div class="col-lg-3 col-md-6">
         <div class="form-group">
-            <label for="start_date" class="form-label">Start Date</label>
-            <input type="datetime-local" class="form-control" id="start_date" name="start_date" required>
+            <label>Rack Server Number</label>
+            <select name="id_rack" id="rack" class="select" required>
+                <option value="">-- Choose Rack --</option>
+                <?php foreach ($racks as $rack): ?>
+                    <option value="<?= $rack['id_rack']; ?>" <?= ($rack['id_rack'] == $id_rack) ? 'selected' : ''; ?>>
+                        <?= htmlspecialchars("Rack {$rack['number']} - {$rack['company']}"); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
         </div>
-    </div>
-    <div class="col-lg-3 col-md-6">
         <div class="form-group">
-            <label for="end_date" class="form-label">End Date</label>
-            <input type="datetime-local" class="form-control" id="end_date" name="end_date" required>
+            <label>Last Threshold Update (Ampere)</label>
+            <input type="text" name="number" step="0.1" value="<?= $threshold ?>" required>
         </div>
-    </div>
-    <div class="col-lg-2 col-md-6">
-        <div class="d-grid">
-            <button type="submit" name="filter" class="btn btn-primary">
-                <img src="assets/img/icons/search-whites.svg" alt="Search" width="20" class="me-2"> Search
-            </button>
-        </div>
-    </div>
 
+</div>
+    <div class="col-lg-12">
+        <button type="submit" name="update_treshold" class="btn btn-submit me-2"><i class="bi bi-send-fill"></i> Save</button>
+        <a href="userlists.php"><button class="btn btn-cancel" type="button"><i class="bi bi-backspace-fill"></i> Cancel</button></a>            
+    </div>       
+</div>
+</div>
 </div>
 </form>
-</div>
-</div>
-
-<div class="table-responsive">
-<table class="table  datanew">
-<thead>
-<tr>
-<th>No </th>
-<th>Current (A)</th>
- <th>Power (W)</th>
-<th>Time</th>
-</tr>
-</thead>
-<tbody>
-<?php
-$threshold = isset($row['number_treshold']) ? floatval($row['number_treshold']) : 5.5;
-while($result = mysqli_fetch_assoc($sql)){
-    $no++;
-    $current = floatval($result['current']);
-    $rowClass = ($current > $threshold) ? 'table-danger' : '';
-?>
-<tr class="<?php echo $rowClass; ?>">
-    <td style="text-align: center;"><?php echo +$no; ?></td>
-    <td><?php echo $result['current']; ?></td>
-    <td><?php echo $result['power']; ?></td>
-    <td><?php echo $result['created_daily']; ?></td>
-</tr>
-<?php
-}
-?>
-</tbody>
-</table>
-</div>
-</div>
-</div>
 
 </div>
 </div>
@@ -345,36 +277,6 @@ while($result = mysqli_fetch_assoc($sql)){
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
-
-<script>
-    async function exportToPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.setFontSize(18);
-        doc.text('Report Monitoring Data', 14, 15);
-
-        const headers = [["No", "Current (A)", "Power (W)", "Time"]];
-        const rows = [];
-
-        const table = document.querySelector("table tbody");
-        const trs = table.querySelectorAll("tr");
-
-        trs.forEach((tr) => {
-            const cols = tr.querySelectorAll("td");
-            const row = [];
-            cols.forEach((td) => row.push(td.textContent.trim()));
-            rows.push(row);
-        });
-
-        doc.autoTable({
-            startY: 25,
-            head: headers,
-            body: rows
-        });
-
-        doc.save("Daily_Monitoring.pdf");
-    }
-</script>
 
 </body>
 </html>
