@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail->Port       = 587;
 
             // Pengirim dan penerima
-            $mail->setFrom('archivesandika@gmail.com', 'PT Interlink Data Center Sejahtera - Forgot Password');
+            $mail->setFrom('', 'PT Interlink Data Center Sejahtera - Forgot Password');
             $mail->addAddress($email); // ke user
 
             // Konten email
